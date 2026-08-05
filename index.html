@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>VYRO_1.5</title>
+
+<style>
+body{
+background:#050505;
+color:white;
+font-family:monospace;
+margin:0;
+}
+
+#app{
+padding:12px;
+}
+
+#chat{
+height:55vh;
+overflow:auto;
+background:#111;
+border:2px solid #333;
+border-radius:12px;
+padding:10px;
+}
+
+.msg{
+padding:8px;
+margin:8px;
+border-radius:10px;
+white-space:pre-wrap;
+}
+
+.user{
+background:#16456e;
+}
+
+.bot{
+background:#303030;
+}
+
+input,button{
+background:#222;
+color:white;
+border:1px solid gray;
+padding:10px;
+border-radius:10px;
+}
+
+input{
+width:65%;
+}
+
+#brain{
+margin-top:10px;
+background:#111;
+padding:10px;
+border-radius:10px;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div id="app">
+
+<h2 id="title">🤖 VYRO_1.5</h2>
+
+<div id="stats"></div>
+
+<div id="chat"></div>
+
+<br>
+
+<input id="input" placeholder="Talk or teach">
+
+<button onclick="send()">SEND</button>
+
+<button onclick="showBrain()">🧠 BRAIN</button>
+
+<div id="brain"></div>
+
+</div>
+
+
+<script>
+
+let data =
+JSON.parse(localStorage.getItem("vyro15"))
+||
+{
+name:"VYRO",
+facts:[],
+responses:[],
+messages:[]
+};
+
+
+
+function save(){
+localStorage.setItem(
+"vyro15",
+JSON.stringify(data)
+);
+}
+
+
+
+function clean(t){
+
+return t
+.toLowerCase()
+.replace(/[!?.,]/g,"")
+.trim()
+.replace(/^(a|an|the)\s+/,"");
+
+}
+
+
+
+function add(who,text,type){
+
+data.messages.push({
+who,
+text,
+type
+});
+
+if(data.messages.length>100)
+data.messages.shift();
+
+save();
+draw();
+
+}
+
+
+
+function draw(){
+
+chat.innerHTML="";
+
+data.messages.forEach(m=>{
+
+let d=document.createElement("div");
+
+d.className="msg "+m.type;
+
+d.innerHTML=
+"<b>"+m.who+"</b><br>"+m.text;
+
+chat.appendChild(d);
+
+});
+
+chat.scrollTop=chat.scrollHeight;
+
+
+title.innerHTML=
+"🤖 "+data.name+"_1.5";
+
+
+stats.innerHTML=
+"Facts: "+data.facts.length+
+" | Responses: "+
+data.responses.length;
+
+}
+
+
+
+
+
+function isQuestion(t){
+
+return /^(what|who|where|why|how|when|what's)/i
+.test(t);
+
+}
+
+
+
+
+
+function nameCommand(t){
+
+let m=t.match(/^name (.+)$/i);
+
+if(m){
+
+data.name=m[1].trim();
+
+return "My new name is "+data.name;
+
+}
+
+return null;
+
+}
+
+
+
+
+
+function responseCommand(t){
+
+let low=t.toLowerCase();
+
+if(!low.startsWith("respond to "))
+return null;
+
+
+let content=t.substring(11).trim();
+
+let trigger="";
+let reply="";
+
+
+if(content.startsWith('"')){
+
+let end=content.indexOf('"',1);
+
+if(end!=-1){
+
+trigger=content.substring(1,end);
+
+reply=content.substring(end+1).trim();
+
+}
+
+}
+
+
+if(!trigger){
+
+let parts=content.split(" ");
+
+trigger=parts[0];
+
+reply=parts.slice(1).join(" ");
+
+}
+
+
+if(!reply)
+return "I need a response.";
+
+
+let word=clean(trigger);
+
+
+let existing=data.responses.find(
+r=>r.word==word
+);
+
+
+if(existing){
+
+if(!existing.replies)
+existing.replies=[existing.reply];
+
+
+if(!existing.replies.includes(reply))
+existing.replies.push(reply);
+
+
+return "Added response:\n"+
+word+
+" → "+
+reply;
+
+}
+
+
+
+data.responses.push({
+
+word:word,
+
+replies:[reply]
+
+});
+
+
+return "Response learned:\n"+
+word+
+" → "+
+reply;
+
+}
+
+
+
+
+
+function getResponse(t){
+
+let word=clean(t);
+
+
+let found=data.responses.find(
+r=>r.word==word
+);
+
+
+if(found){
+
+return found.replies[
+Math.floor(
+Math.random()*found.replies.length
+)
+];
+
+}
+
+
+return null;
+
+}
+
+
+
+
+
+function learn(t){
+
+if(isQuestion(t))
+return null;
+
+
+let m=t.match(
+/^(.+?)\s+is\s+(a\s+|an\s+)?(.+)$/i
+);
+
+
+if(!m)
+return null;
+
+
+let subject=clean(m[1]);
+
+let old=data.facts.find(
+f=>f.subject==subject
+);
+
+
+if(old){
+
+old.original=t;
+
+return "Updated memory:\n"+t;
+
+}
+
+
+
+data.facts.push({
+
+subject,
+
+original:t
+
+});
+
+
+return "I learned:\n"+
+m[1]+
+" → "+
+m[3];
+
+}
+
+
+
+
+
+function ask(t){
+
+let name=t
+.replace(
+/^(what|who|where|why|how|when|what's)\s+(is|are)\s+/i,
+""
+);
+
+
+let f=data.facts.find(
+x=>x.subject==clean(name)
+);
+
+
+if(f)
+return f.original+".";
+
+
+return "I don't know that yet. Teach me.";
+
+}
+
+
+
+
+
+function forget(t){
+
+let m=t.match(/^forget (.+)$/i);
+
+if(!m)
+return null;
+
+
+let n=clean(m[1]);
+
+
+let old=data.facts.length;
+
+
+data.facts=data.facts.filter(
+f=>f.subject!=n
+);
+
+
+if(old!=data.facts.length)
+return "Memory removed: "+n;
+
+
+return "I couldn't find that memory.";
+
+}
+
+
+
+
+
+function send(){
+
+let text=input.value.trim();
+
+if(!text)return;
+
+
+add("You",text,"user");
+
+
+let answer;
+
+
+answer=
+responseCommand(text)
+||
+nameCommand(text)
+||
+forget(text)
+||
+getResponse(text);
+
+
+
+if(!answer && isQuestion(text))
+answer=ask(text);
+
+
+if(!answer)
+answer=learn(text);
+
+
+if(!answer)
+answer="I don't understand yet.";
+
+
+
+setTimeout(()=>{
+
+add(
+data.name,
+answer,
+"bot"
+);
+
+},300);
+
+
+input.value="";
+
+}
+
+
+
+
+
+function showBrain(){
+
+let out=
+"🧠 VYRO BRAIN<br><br>";
+
+out+="⚙️ NAME:<br>"+
+data.name+
+"<br><br>";
+
+
+out+="📚 FACTS:<br>";
+
+data.facts.forEach(f=>{
+
+out+=f.original+"<br>";
+
+});
+
+
+out+="<br>🗣️ RESPONSES:<br>";
+
+data.responses.forEach(r=>{
+
+out+=r.word+
+" → "+
+r.replies.join(" | ")
++"<br>";
+
+});
+
+
+brain.innerHTML=out;
+
+}
+
+
+
+draw();
+
+</script>
+
+</body>
+  </html>
