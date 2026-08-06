@@ -80,7 +80,18 @@ border-radius:10px;
 
 <button onclick="showBrain()">🧠 BRAIN</button>
 
-<div id="brain"></div>
+<button onclick="exportBrain()">💾 EXPORT</button>
+
+<button onclick="importBrain()">📂 IMPORT</button>
+
+<input
+id="importFile"
+type="file"
+accept=".json"
+style="display:none"
+onchange="loadBrain(event)">
+
+<div id="brain"></div>  
 
 </div>
 
@@ -525,7 +536,93 @@ brain.innerHTML=out;
 }
 
 
+function exportBrain(){
 
+let brain={
+name:data.name,
+facts:data.facts,
+responses:data.responses
+};
+
+let blob=new Blob(
+[JSON.stringify(brain,null,2)],
+{type:"application/json"}
+);
+
+let a=document.createElement("a");
+
+a.href=URL.createObjectURL(blob);
+
+a.download=data.name+"_brain.json";
+
+a.click();
+
+URL.revokeObjectURL(a.href);
+
+}
+
+
+
+function importBrain(){
+
+document
+.getElementById("importFile")
+.click();
+
+}
+
+
+
+function loadBrain(e){
+
+let file=e.target.files[0];
+
+if(!file)return;
+
+let reader=new FileReader();
+
+reader.onload=function(){
+
+try{
+
+let brain=JSON.parse(reader.result);
+
+if(
+!brain.name||
+!Array.isArray(brain.facts)||
+!Array.isArray(brain.responses)
+){
+
+alert("❌ Invalid VYRO brain.");
+
+return;
+
+}
+
+data.name=brain.name;
+data.facts=brain.facts;
+data.responses=brain.responses;
+
+save();
+draw();
+
+alert(
+"🧠 Brain imported!\n"+
+"Facts: "+data.facts.length+
+"\nResponses: "+data.responses.length
+);
+
+}catch{
+
+alert("❌ Invalid JSON.");
+
+}
+
+};
+
+reader.readAsText(file);
+
+}
 draw();
 
 </script>
